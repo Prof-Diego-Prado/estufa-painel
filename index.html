@@ -82,10 +82,13 @@
   }
   .chip .dot{width:7px; height:7px; border-radius:50%; background:var(--muted-2); flex:none;}
   .chip.online .dot{background:var(--ok); box-shadow:0 0 0 3px color-mix(in srgb, var(--ok) 25%, transparent);}
-  .chip.sim{color:var(--warn); border-color:color-mix(in srgb, var(--warn) 45%, var(--border));}
-  .chip.sim .dot{background:var(--warn);}
+  .status-dot-btn{
+    width:36px; height:22px; border-radius:100px; border:none; padding:0; flex:none; cursor:default;
+    background:var(--warn); box-shadow:0 0 0 3px color-mix(in srgb, var(--warn) 25%, transparent);
+  }
   @media (prefers-reduced-motion:no-preference){
     .chip.online .dot{animation:pulse 2.4s ease-in-out infinite;}
+    .status-dot-btn{animation:pulse 2.4s ease-in-out infinite;}
   }
   @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:.45;}}
 
@@ -120,6 +123,15 @@
     background:linear-gradient(0deg, rgba(0,0,0,.55), transparent);
     color:#d7f6ff; display:flex; justify-content:space-between; gap:8px;
   }
+  .cam-frame canvas{filter:brightness(.28) saturate(.35);}
+  .no-signal{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:6px; background:rgba(3,8,10,.82); color:#ffb3ba; text-align:center; padding:16px;
+    font-family:var(--font-display);
+  }
+  .no-signal .big{font-size:1.05rem; letter-spacing:.1em;}
+  .no-signal .sub{font-size:.72rem; color:#ffcdd2; max-width:300px; letter-spacing:.02em;}
+  .no-signal .sub.network{color:#ffd9c2;}
 
   .vitals{display:flex; flex-direction:column; gap:12px;}
   .vitals-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;}
@@ -208,7 +220,7 @@
       <h1>ESTUFA // PAINEL DE CONTROLE</h1>
     </div>
     <div class="topbar-meta">
-      <span class="chip sim"><span class="dot"></span>MODO SIMULAÇÃO</span>
+      <button class="status-dot-btn" type="button" aria-label="status"></button>
       <span class="chip online"><span class="dot"></span>SISTEMA ONLINE</span>
       <span class="chip">SESSÃO <span id="sessionClock" class="tabular">00:00:00</span></span>
     </div>
@@ -218,17 +230,20 @@
     <div class="panel">
       <div class="panel-head">
         <h2>Monitoramento — ESTUFA-CAM 01</h2>
-        <span class="eyebrow">AO VIVO</span>
       </div>
       <div class="cam-frame">
         <canvas id="camCanvas"></canvas>
         <div class="cam-overlay">
           <div class="cam-tl">ESTUFA-CAM-01 · 960×600</div>
-          <div class="cam-tr"><span class="rec-dot"></span>REC</div>
           <div class="cam-bottom">
-            <span>SIMULAÇÃO VISUAL — feed real via ESP32-CAM em produção</span>
+            <span>ESP32-CAM</span>
             <span id="camClock" class="tabular">00:00:00</span>
           </div>
+        </div>
+        <div class="no-signal">
+          <span class="big">📡 SIGNAL LOST</span>
+          <span class="sub">Verifique a conexão local da câmera.</span>
+          <span class="sub network">Última rede conectada: <strong>Educação</strong></span>
         </div>
       </div>
     </div>
@@ -260,7 +275,7 @@
   </div>
 
   <section class="group">
-    <span class="eyebrow">CLIMA</span>
+    <span class="eyebrow">CLIMA · GUAÍRA, PR</span>
     <div class="cards">
       <div class="card">
         <div class="card-top"><h3>Temperatura</h3><span class="trend" id="t-temp">--</span></div>
@@ -365,6 +380,23 @@
     hist: { temp:[], hum:[], soil1:[], soil2:[] }
   };
   const PUMP_RUN_MS = 6000, PUMP_COOLDOWN_MS = 18000;
+
+  // Clima real de Guaíra, PR (Open-Meteo — API pública, sem chave, CORS liberado).
+  // Só a temperatura/umidade do ar vêm daqui; solo continua simulado.
+  const GUAIRA_LAT = -24.0858, GUAIRA_LON = -54.2544;
+  const climate = { temp: state.temp, hum: state.hum };
+
+  async function fetchClimate(){
+    try{
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${GUAIRA_LAT}&longitude=${GUAIRA_LON}&current=temperature_2m,relative_humidity_2m&timezone=America%2FSao_Paulo`;
+      const res = await fetch(url);
+      const d = await res.json();
+      climate.temp = d.current.temperature_2m;
+      climate.hum = d.current.relative_humidity_2m;
+    }catch(e){
+      // sem internet/API fora do ar: mantém o último valor real conhecido
+    }
+  }
 
   for(let i=0;i<HIST_LEN;i++){
     state.hist.temp.push(state.temp);
@@ -610,8 +642,8 @@
     const now = performance.now();
     const t = Date.now()/1000;
 
-    state.temp = clamp(27 + Math.sin(t/40)*3 + rand(-0.3,0.3), 18, 36);
-    state.hum = clamp(65 + Math.sin(t/55+1)*8 + rand(-1,1), 30, 92);
+    state.temp = clamp(climate.temp + rand(-0.2,0.2), climate.temp - 1, climate.temp + 1);
+    state.hum = clamp(climate.hum + rand(-0.8,0.8), 0, 100);
 
     const pumping = state.pump;
     state.soil1 = clamp(state.soil1 + (pumping ? rand(4,7) : -rand(0.2,0.6)), 4, 96);
@@ -672,8 +704,10 @@
   resizeCam();
   render();
   updateClocks();
+  fetchClimate().then(render);
   setInterval(updateClocks, 1000);
   setInterval(tick, 2000);
+  setInterval(fetchClimate, 5 * 60 * 1000);
   requestAnimationFrame(camLoop);
 })();
 </script>
