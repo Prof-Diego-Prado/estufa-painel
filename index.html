@@ -386,10 +386,10 @@
 <div class="modal-overlay" id="camSettingsOverlay" hidden>
   <div class="modal">
     <h2>Câmera real (opcional)</h2>
-    <p>Cole aqui o endereço público do stream da sua ESP32-CAM (ex.: URL de um túnel Cloudflare) e as credenciais configuradas no firmware. Fica salvo só neste navegador — nunca no código publicado.</p>
+    <p>Cole aqui o endereço público do stream da sua ESP32-CAM (ex.: URL de um túnel Cloudflare). Ao salvar, o navegador vai abrir um popup nativo pedindo login para esse endereço — digite lá as mesmas credenciais do firmware (campos abaixo são só de referência/lembrete, não são enviados automaticamente).</p>
     <div class="field"><label>Endereço do stream</label><input type="text" id="camInUrl" placeholder="https://exemplo.trycloudflare.com"></div>
-    <div class="field"><label>Usuário</label><input type="text" id="camInUser" autocomplete="username"></div>
-    <div class="field"><label>Senha</label><input type="password" id="camInPass" autocomplete="current-password"></div>
+    <div class="field"><label>Usuário (para lembrar)</label><input type="text" id="camInUser" autocomplete="username"></div>
+    <div class="field"><label>Senha (para lembrar)</label><input type="password" id="camInPass" autocomplete="current-password"></div>
     <p>Deixe o endereço em branco e salve para voltar à simulação.</p>
     <div class="modal-actions">
       <button class="btn" id="camSettingsCancel" type="button">Cancelar</button>
@@ -565,10 +565,10 @@
   const realCamImg = document.getElementById('realCamImg');
   const noSignalSub = document.getElementById('noSignalSub');
 
-  function withCreds(url){
-    return url.replace(/^(https?:\/\/)/, `$1${encodeURIComponent(camState.user)}:${encodeURIComponent(camState.pass)}@`);
-  }
-
+  // Navegadores modernos bloqueiam credenciais embutidas na URL
+  // (https://user:pass@host) para recursos de outra origem — por segurança
+  // contra phishing. Por isso não embutimos mais aqui: o navegador vai
+  // pedir o login nativamente (uma vez só) para o endereço do túnel.
   function setRealCamOnline(){ camFrame.classList.remove('offline'); }
   function setRealCamOffline(){
     camFrame.classList.add('offline');
@@ -580,7 +580,7 @@
     clearTimeout(camWatchdog); clearTimeout(camRetryTimer);
     if(!camState.url) return;
     camWatchdog = setTimeout(setRealCamOffline, 8000);
-    realCamImg.src = withCreds(camState.url.replace(/\/$/, '')) + '/stream?_=' + Date.now();
+    realCamImg.src = camState.url.replace(/\/$/, '') + '/stream?_=' + Date.now();
   }
 
   realCamImg.addEventListener('load', () => { clearTimeout(camWatchdog); setRealCamOnline(); });
