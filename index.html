@@ -386,10 +386,10 @@
 <div class="modal-overlay" id="camSettingsOverlay" hidden>
   <div class="modal">
     <h2>Câmera real (opcional)</h2>
-    <p>Cole aqui o endereço público do stream da sua ESP32-CAM (ex.: URL de um túnel Cloudflare). Ao salvar, o navegador vai abrir um popup nativo pedindo login para esse endereço — digite lá as mesmas credenciais do firmware (campos abaixo são só de referência/lembrete, não são enviados automaticamente).</p>
+    <p>Cole aqui o endereço público do stream da sua ESP32-CAM (ex.: URL de um túnel Cloudflare) e as credenciais do firmware. Fica salvo só neste navegador (localStorage) — nunca no código publicado.</p>
     <div class="field"><label>Endereço do stream</label><input type="text" id="camInUrl" placeholder="https://exemplo.trycloudflare.com"></div>
-    <div class="field"><label>Usuário (para lembrar)</label><input type="text" id="camInUser" autocomplete="username"></div>
-    <div class="field"><label>Senha (para lembrar)</label><input type="password" id="camInPass" autocomplete="current-password"></div>
+    <div class="field"><label>Usuário</label><input type="text" id="camInUser" autocomplete="username"></div>
+    <div class="field"><label>Senha</label><input type="password" id="camInPass" autocomplete="current-password"></div>
     <p>Deixe o endereço em branco e salve para voltar à simulação.</p>
     <div class="modal-actions">
       <button class="btn" id="camSettingsCancel" type="button">Cancelar</button>
